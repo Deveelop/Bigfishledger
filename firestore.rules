@@ -1,0 +1,86 @@
+rules_version = '2';
+
+// Big Fish Sales Ledger — Firestore security rules
+//
+// Paste this entire file into: Firebase console -> Firestore Database -> Rules -> Publish.
+// It enforces, on the server (not just in the app's UI), that:
+//   - Only signed-in users can read or write anything.
+//   - Anyone signed in can record sales, manage products, and set the daily cash summary.
+//   - Only users whose roles/{uid} doc has editor:true can write to "purchases"
+//     (procurement) — add, edit, or delete a purchase record.
+//   - The very first person to ever sign in becomes the owner and is auto-granted
+//     editor:true. Everyone who signs up after that starts as view-only until the
+//     owner promotes them from the app's "Access" tab.
+//   - Only the owner can change anyone's editor status (grant/revoke access).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isEditor() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.editor == true;
+    }
+
+    function isOwner() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/meta/bootstrap) &&
+        get(/databases/$(database)/documents/meta/bootstrap).data.ownerUid == request.auth.uid;
+    }
+
+    // Catalog, sales, and the daily cash summary: open to any signed-in user.
+    match /products/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+    match /sales/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+    match /daily/{id} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+
+    // Procurement: read is open to any signed-in user, write requires editor:true.
+    match /purchases/{id} {
+      allow read: if signedIn();
+      allow write: if isEditor();
+    }
+
+    // Each person's own role doc. They can create their own (defaulting to
+    // view-only, or to editor only during the one-time bootstrap below).
+    // Only the owner can update anyone's editor flag afterwards.
+    match /roles/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid && (
+        request.resource.data.editor == false ||
+        (request.resource.data.editor == true && !exists(/databases/$(database)/documents/meta/bootstrap))
+      );
+      allow update: if isOwner();
+      allow delete: if false;
+    }
+
+    // One-time bootstrap marker recording who the owner is. Created once, by
+    // whoever gets there first; never editable afterwards.
+    match /meta/bootstrap {
+      allow read: if signedIn();
+      allow create: if signedIn() && !exists(/databases/$(database)/documents/meta/bootstrap);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // One-time demo-data seed marker, written by the app the first time the
+    // products collection is empty.
+    match /meta/seed {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
