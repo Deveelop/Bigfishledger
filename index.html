@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Big Fish Sales Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --paper:#F5F1E6;
+    --paper-alt:#EDE6D3;
+    --card:#FFFFFF;
+    --ink:#20281F;
+    --ink-soft:#5B6455;
+    --line:#D9CFAE;
+    --line-strong:#BDB088;
+    --teal:#24605A;
+    --teal-deep:#173F3B;
+    --teal-tint:#E3EEEA;
+    --amber:#96631F;
+    --amber-tint:#F3E8D4;
+    --yellow:#7C6A1C;
+    --yellow-tint:#F5EFD3;
+    --red:#9A3324;
+    --red-tint:#F5E1DA;
+    --green:#2E6B3E;
+    --green-tint:#E2EFE2;
+    --focus:#173F3B;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#14170F;
+      --paper-alt:#1B1F15;
+      --card:#1D2217;
+      --ink:#ECE7D6;
+      --ink-soft:#A6AE97;
+      --line:#3A4030;
+      --line-strong:#4C5440;
+      --teal:#5FA79B;
+      --teal-deep:#8FC9BD;
+      --teal-tint:#1E2E29;
+      --amber:#D6A85D;
+      --amber-tint:#2E2718;
+      --yellow:#D3C066;
+      --yellow-tint:#2C2916;
+      --red:#E08468;
+      --red-tint:#332019;
+      --green:#8FC79A;
+      --green-tint:#1D2B1E;
+      --focus:#8FC9BD;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#14170F;
+    --paper-alt:#1B1F15;
+    --card:#1D2217;
+    --ink:#ECE7D6;
+    --ink-soft:#A6AE97;
+    --line:#3A4030;
+    --line-strong:#4C5440;
+    --teal:#5FA79B;
+    --teal-deep:#8FC9BD;
+    --teal-tint:#1E2E29;
+    --amber:#D6A85D;
+    --amber-tint:#2E2718;
+    --yellow:#D3C066;
+    --yellow-tint:#2C2916;
+    --red:#E08468;
+    --red-tint:#332019;
+    --green:#8FC79A;
+    --green-tint:#1D2B1E;
+    --focus:#8FC9BD;
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    margin:0;
+    color:var(--ink);
+  }
+  .num{ font-variant-numeric: tabular-nums; }
+  a{color:var(--teal-deep);}
+
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px 64px;}
+
+  /* Header */
+  header.ledger-head{
+    border-bottom:2px solid var(--ink);
+    padding:28px 0 18px;
+    margin-bottom:6px;
+  }
+  header.ledger-head .top-row{
+    display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;
+  }
+  header.ledger-head h1{
+    font-size:30px;
+    font-style:italic;
+    letter-spacing:0.2px;
+  }
+  header.ledger-head .today{
+    font-size:13px;color:var(--ink-soft);text-align:right;
+  }
+  .hero-strip{
+    display:flex;gap:0;margin-top:16px;border-top:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+  .hero-cell{
+    flex:1 1 160px;padding:12px 18px 4px 0;border-right:1px solid var(--line);
+  }
+  .hero-cell:last-child{border-right:none;}
+  .hero-cell .label{font-size:12.5px;color:var(--ink-soft);}
+  .hero-cell .value{font-size:21px;font-weight:600;margin-top:2px;}
+  .hero-cell .value.warn{color:var(--red);}
+  .hero-cell .value.good{color:var(--green);}
+
+  /* Tabs */
+  nav.tabs{
+    display:flex;gap:2px;margin:22px 0 24px;border-bottom:1px solid var(--line);
+    overflow-x:auto;
+  }
+  nav.tabs button{
+    font-family:'Fraunces', serif;
+    font-size:15.5px;
+    background:none;border:none;
+    padding:10px 16px 12px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    white-space:nowrap;
+  }
+  nav.tabs button:hover{color:var(--ink);}
+  nav.tabs button.active{
+    color:var(--teal-deep);
+    border-bottom:2px solid var(--teal-deep);
+    font-weight:600;
+  }
+
+  section.panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:22px 22px 26px;
+    margin-bottom:22px;
+  }
+  section.panel + section.panel{margin-top:0;}
+  .panel h2{font-size:19px;margin-bottom:4px;}
+  .panel .sub{color:var(--ink-soft);font-size:13.5px;margin-bottom:16px;}
+
+  /* Forms */
+  form.record-form{
+    display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end;
+    padding-bottom:18px;margin-bottom:18px;border-bottom:1px dashed var(--line-strong);
+  }
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:12px;color:var(--ink-soft);}
+  .field input, .field select{
+    font-family:inherit;font-size:14.5px;
+    padding:7px 9px;border:1px solid var(--line-strong);border-radius:2px;
+    background:var(--paper);color:var(--ink);min-width:120px;
+  }
+  .field input:focus, .field select:focus{outline:2px solid var(--focus);outline-offset:1px;}
+  .field.grow{flex:1 1 220px;}
+  .field.narrow input{min-width:90px;}
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .hint.warn{color:var(--red);}
+
+  button.btn{
+    font-family:'IBM Plex Sans', sans-serif;font-weight:600;font-size:14px;
+    padding:9px 16px;border-radius:2px;border:1px solid var(--teal-deep);
+    background:var(--teal-deep);color:#fff;cursor:pointer;
+  }
+  button.btn:hover{background:var(--teal);border-color:var(--teal);}
+  button.btn.secondary{
+    background:transparent;color:var(--teal-deep);
+  }
+  button.btn.secondary:hover{background:var(--teal-tint);}
+  button.btn.danger{
+    background:transparent;color:var(--red);border-color:var(--red);
+    padding:5px 10px;font-size:12.5px;
+  }
+  button.btn.danger:hover{background:var(--red-tint);}
+  button.btn.danger.confirming{background:var(--red);color:#fff;border-color:var(--red);}
+  #toast{
+    position:fixed;left:50%;bottom:24px;transform:translate(-50%,12px);
+    background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:4px;
+    font-size:13.5px;box-shadow:0 6px 18px rgba(0,0,0,0.25);
+    opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;
+    z-index:50;max-width:90vw;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0);}
+  #toast.error{background:var(--red);}
+
+  .auth-wrap{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:var(--paper);padding:24px;
+  }
+  .auth-card{
+    background:var(--card);border:1px solid var(--line);border-radius:4px;
+    padding:30px 28px;max-width:360px;width:100%;
+  }
+  .auth-card .field label{display:block;margin-bottom:4px;}
+  .auth-card .field input{width:100%;}
+  .who-row{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:12.5px;color:var(--ink-soft);padding-top:10px;
+  }
+  .who-row button{
+    background:none;border:none;color:var(--teal-deep);font-size:12.5px;
+    cursor:pointer;text-decoration:underline;padding:0;font-family:inherit;
+  }
+  button.btn.small{padding:6px 11px;font-size:12.5px;}
+  button.btn[disabled]{opacity:0.45;cursor:not-allowed;}
+  .row-actions{display:flex;gap:8px;justify-content:flex-end;}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;}
+
+  /* Tables */
+  table.ledger{width:100%;border-collapse:collapse;font-size:14px;}
+  table.ledger th{
+    text-align:left;font-weight:600;font-size:12px;color:var(--ink-soft);
+    padding:6px 10px;border-bottom:1px solid var(--line-strong);
+    position:sticky;top:0;background:var(--card);
+  }
+  table.ledger td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  table.ledger tbody tr:hover{background:var(--paper-alt);}
+  table.ledger td.num, table.ledger th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  table.ledger tfoot td{border-top:2px solid var(--ink);border-bottom:none;font-weight:700;padding-top:10px;}
+  .table-scroll{overflow-x:auto;}
+
+  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11.5px;font-weight:600;}
+  .tag-fish{background:var(--teal-tint);color:var(--teal-deep);}
+  .tag-chicken{background:var(--amber-tint);color:var(--amber);}
+  .tag-eggs{background:var(--yellow-tint);color:var(--yellow);}
+  .tag-other{background:var(--paper-alt);color:var(--ink-soft);}
+
+  .low-stock{color:var(--red);font-weight:600;}
+  .empty-state{padding:26px 4px;color:var(--ink-soft);font-size:14px;}
+  .empty-state strong{color:var(--ink);}
+
+  /* Dashboard */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  @media (max-width:720px){ .grid-2{grid-template-columns:1fr;} }
+  .input-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);}
+  .input-line label{font-size:13.5px;color:var(--ink-soft);}
+  .input-line input{width:150px;text-align:right;font-variant-numeric:tabular-nums;padding:6px 8px;border:1px solid var(--line-strong);border-radius:2px;background:var(--paper);color:var(--ink);font-size:14px;}
+  .calc-line{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .calc-line .amt{font-variant-numeric:tabular-nums;font-weight:600;}
+  .calc-line.total{border-top:2px solid var(--ink);border-bottom:none;margin-top:6px;padding-top:12px;font-size:16px;}
+  .calc-line.total .amt{font-size:18px;}
+  .profit{color:var(--green);}
+  .loss{color:var(--red);}
+
+  .banner{
+    padding:12px 16px;border:1px solid var(--line-strong);border-left:4px solid var(--teal-deep);
+    background:var(--teal-tint);border-radius:2px;font-size:13.5px;margin-bottom:18px;
+  }
+  .banner.error{border-left-color:var(--red);background:var(--red-tint);}
+
+  footer.foot{text-align:center;color:var(--ink-soft);font-size:12px;padding:26px 0 10px;}
+
+  ::selection{background:var(--teal-tint);}
+</style>
+</head>
+<body>
+<div id="authScreen" class="auth-wrap" style="display:none;">
+  <div class="auth-card">
+    <h1 style="font-size:26px;font-style:italic;margin-bottom:4px;">Big Fish Sales Ledger</h1>
+    <div class="sub" style="margin-bottom:18px;">Sign in to view or record stock and sales.</div>
+    <form id="authForm">
+      <div class="field" style="margin-bottom:10px;"><label for="authEmail">Email</label><input type="email" id="authEmail" required style="width:100%;"></div>
+      <div class="field" style="margin-bottom:14px;"><label for="authPassword">Password</label><input type="password" id="authPassword" required minlength="6" style="width:100%;"></div>
+      <div id="authError" class="hint warn" style="display:none;margin-bottom:10px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn" id="authSignIn" style="flex:1;">Sign in</button>
+        <button type="button" class="btn secondary" id="authSignUp" style="flex:1;">Create account</button>
+      </div>
+    </form>
+    <div class="hint" style="margin-top:14px;">The first person to create an account becomes the owner and can grant others edit access from the Access tab.</div>
+  </div>
+</div>
+
+<div id="mainApp" class="wrap" style="display:none;">
+  <header class="ledger-head">
+    <div class="top-row">
+      <h1>Big Fish Sales Ledger</h1>
+      <div class="today" id="todayLabel"></div>
+    </div>
+    <div class="hero-strip" id="heroStrip"></div>
+    <div id="whoRow" class="who-row"></div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <main id="app">
+    <div class="empty-state">Loading ledger…</div>
+  </main>
+
+  <footer class="foot" id="footNote">Shared ledger &mdash; visible to people you&rsquo;ve given access to.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- Firebase project config ----------------
+     Paste your own Firebase project's config here (Firebase console
+     -> Project settings -> General -> Your apps -> Web app -> SDK setup).
+     See README.md for the full setup guide. */
+  var FIREBASE_CONFIG = {
+    apiKey: "PASTE_YOUR_API_KEY",
+    authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+    projectId: "PASTE_YOUR_PROJECT_ID",
+    storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+    messagingSenderId: "PASTE_YOUR_SENDER_ID",
+    appId: "PASTE_YOUR_APP_ID"
+  };
+
+  /* ---------------- constants & helpers ---------------- */
+  var TABS = [
+    {id:'dashboard', label:'Dashboard'},
+    {id:'purchases', label:'Purchases'},
+    {id:'sales', label:'Sales'},
+    {id:'inventory', label:'Inventory'},
+    {id:'products', label:'Products'},
+    {id:'access', label:'Access', ownerOnly:true}
+  ];
+
+  var SEED_PRODUCTS = [
+    {id:'fish-400', category:'Fish', variant:'400', costPrice:50, sellingPrice:400},
+    {id:'fish-500', category:'Fish', variant:'500', costPrice:280, sellingPrice:500},
+    {id:'fish-600', category:'Fish', variant:'600', costPrice:280, sellingPrice:600},
+    {id:'fish-700', category:'Fish', variant:'700', costPrice:550, sellingPrice:700},
+    {id:'fish-750', category:'Fish', variant:'750', costPrice:550, sellingPrice:750},
+    {id:'fish-800', category:'Fish', variant:'800', costPrice:550, sellingPrice:800},
+    {id:'fish-1000', category:'Fish', variant:'1000', costPrice:510, sellingPrice:1000},
+    {id:'fish-1200', category:'Fish', variant:'1200', costPrice:945, sellingPrice:1200},
+    {id:'fish-1300', category:'Fish', variant:'1300', costPrice:945, sellingPrice:1300},
+    {id:'fish-1400', category:'Fish', variant:'1400', costPrice:945, sellingPrice:1400},
+    {id:'fish-1500', category:'Fish', variant:'1500', costPrice:945, sellingPrice:1500},
+    {id:'fish-2000', category:'Fish', variant:'2000', costPrice:647, sellingPrice:2000},
+    {id:'chicken-half-kilo', category:'Chicken', variant:'Half-kilo', costPrice:2333, sellingPrice:3000},
+    {id:'chicken-kilo', category:'Chicken', variant:'Kilo', costPrice:4666, sellingPrice:6000},
+    {id:'chicken-full-chicken', category:'Chicken', variant:'Full Chicken', costPrice:7000, sellingPrice:9000},
+    {id:'eggs-crates', category:'Eggs', variant:'Crates', costPrice:5200, sellingPrice:6000},
+    {id:'eggs-singles', category:'Eggs', variant:'Singles', costPrice:173, sellingPrice:200}
+  ];
+
+  var SEED_PURCHASES = [
+    {date:'2026-01-08', productId:'fish-400', category:'Fish', variant:'400', quantity:50, costPrice:280, sellingPrice:400},
+    {date:'2026-01-08', productId:'fish-500', category:'Fish', variant:'500', quantity:89, costPrice:280, sellingPrice:500},
+    {date:'2026-01-08', productId:'fish-600', category:'Fish', variant:'600', quantity:6, costPrice:280, sellingPrice:600},
+    {date:'2026-01-08', productId:'fish-700', category:'Fish', variant:'700', quantity:44, costPrice:550, sellingPrice:700},
+    {date:'2026-01-08', productId:'fish-800', category:'Fish', variant:'800', quantity:19, costPrice:550, sellingPrice:800},
+    {date:'2025-12-22', productId:'chicken-half-kilo', category:'Chicken', variant:'Half-kilo', quantity:0, costPrice:2333, sellingPrice:3000},
+    {date:'2025-12-22', productId:'chicken-kilo', category:'Chicken', variant:'Kilo', quantity:0, costPrice:4666, sellingPrice:6000},
+    {date:'2025-12-22', productId:'chicken-full-chicken', category:'Chicken', variant:'Full Chicken', quantity:5, costPrice:7000, sellingPrice:9000},
+    {date:'2025-12-22', productId:'eggs-crates', category:'Eggs', variant:'Crates', quantity:3, costPrice:5200, sellingPrice:6000},
+    {date:'2025-12-12', productId:'eggs-singles', category:'Eggs', variant:'Singles', quantity:90, costPrice:173, sellingPrice:200},
+    {date:'2025-12-22', productId:'fish-1000', category:'Fish', variant:'1000', quantity:13, costPrice:510, sellingPrice:1000},
+    {date:'2025-12-22', productId:'fish-1500', category:'Fish', variant:'1500', quantity:17, costPrice:945, sellingPrice:1500},
+    {date:'2025-12-22', productId:'fish-2000', category:'Fish', variant:'2000', quantity:20, costPrice:647, sellingPrice:2000},
+    {date:'2025-12-22', productId:'fish-1400', category:'Fish', variant:'1400', quantity:10, costPrice:945, sellingPrice:1400},
+    {date:'2025-12-22', productId:'fish-1200', category:'Fish', variant:'1200', quantity:10, costPrice:945, sellingPrice:1200},
+    {date:'2025-12-22', productId:'fish-750', category:'Fish', variant:'750', quantity:2, costPrice:550, sellingPrice:750},
+    {date:'2025-12-22', productId:'fish-1300', category:'Fish', variant:'1300', quantity:17, costPrice:945, sellingPrice:1300}
+  ];
+
+  var SEED_SALES = [
+    {date:'2026-01-14', productId:'fish-500', category:'Fish', variant:'500', quantitySold:2, unitPrice:500, amount:1000, costOfGoods:560},
+    {date:'2026-01-14', productId:'fish-800', category:'Fish', variant:'800', quantitySold:1, unitPrice:800, amount:800, costOfGoods:550},
+    {date:'2026-01-14', productId:'eggs-singles', category:'Eggs', variant:'Singles', quantitySold:14, unitPrice:200, amount:2800, costOfGoods:2422},
+    {date:'2026-01-14', productId:'fish-1300', category:'Fish', variant:'1300', quantitySold:1, unitPrice:1300, amount:1300, costOfGoods:945}
+  ];
+
+  var SEED_DAILY = {date:'2026-01-14', cashBefore:7050, bankBefore:63792, posProfit:0, debtsExpenses:0, closeOfDayCash:0};
+
+  function todayISO(){
+    var d = new Date();
+    var tz = d.getTimezoneOffset();
+    var local = new Date(d.getTime() - tz*60000);
+    return local.toISOString().slice(0,10);
+  }
+  function fmtDate(iso){
+    if(!iso) return '';
+    var parts = iso.split('-');
+    var d = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
+    return d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+  }
+  function round2(n){
+    n = Number(n);
+    if(!isFinite(n)) return 0;
+    return Math.round((n + (n>=0?1:-1)*1e-9) * 100) / 100;
+  }
+  function money(n){
+    n = round2(n);
+    var neg = n < 0;
+    n = Math.abs(n);
+    var s = n.toLocaleString('en-NG', {minimumFractionDigits: (n%1===0?0:2), maximumFractionDigits:2});
+    return (neg?'-':'') + '\u20a6' + s;
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function slugify(s){
+    return String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-+|-+$)/g,'');
+  }
+  function categoryClass(cat){
+    var c = (cat||'').toLowerCase();
+    if(c==='fish') return 'tag-fish';
+    if(c==='chicken') return 'tag-chicken';
+    if(c==='eggs' || c==='egg') return 'tag-eggs';
+    return 'tag-other';
+  }
+  function variantCompare(a,b){
+    var na = parseFloat(a), nb = parseFloat(b);
+    var aNum = !isNaN(na) && String(na)===String(a).trim();
+    var bNum = !isNaN(nb) && String(nb)===String(b).trim();
+    if(aNum && bNum) return na-nb;
+    return String(a).localeCompare(String(b));
+  }
+  var _toastTimer = null;
+  function showToast(msg, isError){
+    var t = document.getElementById('toast');
+    if(!t){
+      t = document.createElement('div');
+      t.id = 'toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function(){ t.className = 'toast'; }, 3600);
+  }
+  // Two-tap delete confirmation: native confirm() dialogs are unreliable inside
+  // this sandboxed view (they can silently no-op), so we arm the button in place.
+  function armDelete(btn, onConfirm){
+    if(btn.dataset.armed === '1'){
+      clearTimeout(btn._armTimer);
+      onConfirm();
+      return;
+    }
+    btn.dataset.armed = '1';
+    btn.dataset.label = btn.textContent;
+    btn.textContent = 'Confirm?';
+    btn.classList.add('confirming');
+    btn._armTimer = setTimeout(function(){
+      btn.dataset.armed = '0';
+      btn.textContent = btn.dataset.label || 'Delete';
+      btn.classList.remove('confirming');
+    }, 3000);
+  }
+
+  /* ---------------- state ---------------- */
+  var state = {
+    tab: 'dashboard',
+    date: todayISO(),
+    products: new Map(),   // id -> {id,category,variant,costPrice,sellingPrice}
+    purchases: [],         // {id,date,productId,category,variant,quantity,costPrice,sellingPrice}
+    sales: [],             // {id,date,productId,category,variant,quantitySold,unitPrice,amount,costOfGoods}
+    dailyDoc: null,        // {cashBefore,bankBefore,posProfit,debtsExpenses,closeOfDayCash} or null
+    loadedProducts:false, loadedPurchases:false, loadedSales:false,
+    dbAvailable:true,      // Firestore is either configured or it isn't; no per-view gating here
+    downloadsAvailable:true,
+    canEditProcurement:null, // null = unknown yet, true/false once resolved
+    isOwner:false,
+    ownerUid:null,
+    authUser:null,         // {uid,email} once signed in
+    roles:new Map(),       // uid -> {email, editor}
+    loadedRoles:false,
+    newProductMode:{purchases:false}
+  };
+
+  var app = null, auth = null, db = null;
+  var unsubDaily = null, unsubRole = null, unsubRoles = null, subscribed = false;
+
+  /* ---------------- boot ---------------- */
+  function boot(){
+    if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.indexOf('PASTE_') === 0){
+      document.getElementById('authScreen').style.display = 'flex';
+      document.getElementById('authScreen').innerHTML =
+        '<div class="auth-card"><h1 style="font-size:22px;font-style:italic;">Setup needed</h1>'+
+        '<p class="sub">This copy of the ledger hasn\u2019t been connected to a Firebase project yet. '+
+        'Open index.html and paste your Firebase config into FIREBASE_CONFIG near the top of the script, '+
+        'then redeploy. See README.md for the full walkthrough.</p></div>';
+      return;
+    }
+    app = firebase.initializeApp(FIREBASE_CONFIG);
+    auth = firebase.auth();
+    db = firebase.firestore();
+
+    document.getElementById('authForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      doSignIn();
+    });
+    document.getElementById('authSignUp').addEventListener('click', function(){ doSignUp(); });
+
+    auth.onAuthStateChanged(function(user){
+      if(unsubDaily){ unsubDaily(); unsubDaily=null; }
+      if(unsubRole){ unsubRole(); unsubRole=null; }
+      if(unsubRoles){ unsubRoles(); unsubRoles=null; }
+      subscribed = false;
+
+      if(!user){
+        state.authUser = null;
+        state.canEditProcurement = null;
+        state.isOwner = false;
+        document.getElementById('authScreen').style.display = 'flex';
+        document.getElementById('mainApp').style.display = 'none';
+        return;
+      }
+      state.authUser = {uid:user.uid, email:user.email};
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('mainApp').style.display = '';
+      ensureRoleAndSubscribe(user);
+    });
+  }
+
+  function authErrorMessage(err){
+    var code = (err && err.code) || '';
+    if(code==='auth/email-already-in-use') return 'That email already has an account \u2014 try signing in instead.';
+    if(code==='auth/invalid-email') return 'That email address doesn\u2019t look right.';
+    if(code==='auth/weak-password') return 'Use at least 6 characters for the password.';
+    if(code==='auth/wrong-password' || code==='auth/user-not-found' || code==='auth/invalid-credential') return 'Email or password didn\u2019t match.';
+    return (err && err.message) || 'Something went wrong \u2014 please try again.';
+  }
+  function showAuthError(msg){
+    var el = document.getElementById('authError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function doSignIn(){
+    var email = document.getElementById('authEmail').value.trim();
+    var pass = document.getElementById('authPassword').value;
+    document.getElementById('authError').style.display='none';
+    auth.signInWithEmailAndPassword(email, pass).catch(function(err){ showAuthError(authErrorMessage(err)); });
+  }
+  function doSignUp(){
+    var email = document.getElementById('authEmail').value.trim();
+    var pass = document.getElementById('authPassword').value;
+    document.getElementById('authError').style.display='none';
+    if(!email || pass.length<6){ showAuthError('Enter an email and a password of at least 6 characters.'); return; }
+    auth.createUserWithEmailAndPassword(email, pass).catch(function(err){ showAuthError(authErrorMessage(err)); });
+  }
+
+  async function ensureRoleAndSubscribe(user){
+    try{
+      var roleRef = db.doc('roles/'+user.uid);
+      var snap = await roleRef.get();
+      if(!snap.exists){
+        var bootstrapRef = db.doc('meta/bootstrap');
+        var bsSnap = await bootstrapRef.get();
+        if(!bsSnap.exists){
+          try{
+            await roleRef.set({email:user.email, editor:true, createdAt:new Date().toISOString()});
+            await bootstrapRef.set({done:true, ownerUid:user.uid, createdAt:new Date().toISOString()});
+          }catch(e){
+            await roleRef.set({email:user.email, editor:false, createdAt:new Date().toISOString()}).catch(function(){});
+          }
+        } else {
+          await roleRef.set({email:user.email, editor:false, createdAt:new Date().toISOString()}).catch(function(){});
+        }
+      }
+      var bootDoc = await db.doc('meta/bootstrap').get();
+      state.ownerUid = bootDoc.exists ? bootDoc.data().ownerUid : null;
+      state.isOwner = state.ownerUid === user.uid;
+    }catch(e){ /* best-effort; role listener below still keeps things consistent */ }
+
+    unsubRole = db.doc('roles/'+user.uid).onSnapshot(function(s){
+      state.canEditProcurement = s.exists ? !!s.data().editor : false;
+      renderApp();
+    }, function(){ state.canEditProcurement = false; renderApp(); });
+
+    if(!subscribed){
+      subscribed = true;
+      subscribeAll();
+    }
+  }
+
+  async function seedData(){
+    var now = new Date().toISOString();
+    var i;
+    for(i=0;i<SEED_PRODUCTS.length;i++){
+      var p = SEED_PRODUCTS[i];
+      await db.doc('products/'+p.id).set({category:p.category, variant:p.variant, costPrice:p.costPrice, sellingPrice:p.sellingPrice, createdAt:now});
+    }
+    for(i=0;i<SEED_PURCHASES.length;i++){
+      var pu = SEED_PURCHASES[i];
+      await db.collection('purchases').add({date:pu.date, productId:pu.productId, category:pu.category, variant:pu.variant, quantity:pu.quantity, costPrice:pu.costPrice, sellingPrice:pu.sellingPrice, createdAt:now});
+    }
+    for(i=0;i<SEED_SALES.length;i++){
+      var s = SEED_SALES[i];
+      await db.collection('sales').add({date:s.date, productId:s.productId, category:s.category, variant:s.variant, quantitySold:s.quantitySold, unitPrice:s.unitPrice, amount:s.amount, costOfGoods:s.costOfGoods, createdAt:now});
+    }
+    await db.doc('daily/'+SEED_DAILY.date).set({cashBefore:SEED_DAILY.cashBefore, bankBefore:SEED_DAILY.bankBefore, posProfit:SEED_DAILY.posProfit, debtsExpenses:SEED_DAILY.debtsExpenses, closeOfDayCash:SEED_DAILY.closeOfDayCash});
+    await db.doc('meta/seed').set({seeded:true, seededAt:now});
+  }
+
+  function subscribeAll(){
+    db.collection('products').onSnapshot(function(snap){
+      var map = new Map();
+      snap.docs.forEach(function(d){
+        var data = d.data();
+        map.set(d.id, {id:d.id, category:data.category, variant:data.variant, costPrice:Number(data.costPrice)||0, sellingPrice:Number(data.sellingPrice)||0});
+      });
+      state.products = map;
+      state.loadedProducts = true;
+      if(map.size===0){
+        db.doc('meta/seed').get().then(function(seedSnap){
+          if(!seedSnap.exists){ seedData().catch(function(){}); }
+        }).catch(function(){});
+      }
+      renderApp();
+    }, function(){ state.loadedProducts = true; renderApp(); });
+
+    db.collection('purchases').orderBy('date','desc').limit(1000).onSnapshot(function(snap){
+      state.purchases = snap.docs.map(function(d){
+        var data = d.data();
+        return {id:d.id, date:data.date, productId:data.productId, category:data.category, variant:data.variant,
+          quantity:Number(data.quantity)||0, costPrice:Number(data.costPrice)||0, sellingPrice:Number(data.sellingPrice)||0};
+      });
+      state.loadedPurchases = true;
+      renderApp();
+    }, function(){ state.loadedPurchases = true; renderApp(); });
+
+    db.collection('sales').orderBy('date','desc').limit(1000).onSnapshot(function(snap){
+      state.sales = snap.docs.map(function(d){
+        var data = d.data();
+        return {id:d.id, date:data.date, productId:data.productId, category:data.category, variant:data.variant,
+          quantitySold:Number(data.quantitySold)||0, unitPrice:Number(data.unitPrice)||0,
+          amount:Number(data.amount)||0, costOfGoods:Number(data.costOfGoods)||0};
+      });
+      state.loadedSales = true;
+      renderApp();
+    }, function(){ state.loadedSales = true; renderApp(); });
+
+    unsubRoles = db.collection('roles').onSnapshot(function(snap){
+      var map = new Map();
+      snap.docs.forEach(function(d){ map.set(d.id, d.data()); });
+      state.roles = map;
+      state.loadedRoles = true;
+      renderApp();
+    }, function(){ state.loadedRoles = true; renderApp(); });
+
+    subscribeDaily(state.date);
+  }
+
+  function subscribeDaily(date){
+    if(unsubDaily){ unsubDaily(); unsubDaily = null; }
+    state.dailyDoc = null;
+    unsubDaily = db.doc('daily/'+date).onSnapshot(function(snap){
+      state.dailyDoc = snap.exists ? snap.data() : null;
+      renderApp();
+    }, function(){ renderApp(); });
+  }
+
+  /* ---------------- derived data ---------------- */
+  function sortedProducts(){
+    return Array.from(state.products.values()).sort(function(a,b){
+      if(a.category!==b.category) return a.category.localeCompare(b.category);
+      return variantCompare(a.variant, b.variant);
+    });
+  }
+  function categoriesPresent(){
+    var set = {};
+    state.products.forEach(function(p){ set[p.category]=true; });
+    return Object.keys(set).sort();
+  }
+  function inventoryRows(){
+    var bought = {}, sold = {};
+    state.purchases.forEach(function(p){ bought[p.productId] = (bought[p.productId]||0) + p.quantity; });
+    state.sales.forEach(function(s){ sold[s.productId] = (sold[s.productId]||0) + s.quantitySold; });
+    return sortedProducts().map(function(p){
+      var b = bought[p.id]||0, s = sold[p.id]||0;
+      return {product:p, bought:b, sold:s, remaining:b-s};
+    });
+  }
+  function salesOnDate(date){
+    return state.sales.filter(function(s){ return s.date===date; });
+  }
+  function dailyComputed(date){
+    var rows = salesOnDate(date);
+    var byCategory = {};
+    var totalIncome = 0, totalCost = 0;
+    rows.forEach(function(s){
+      byCategory[s.category] = round2((byCategory[s.category]||0) + s.amount);
+      totalIncome = round2(totalIncome + s.amount);
+      totalCost = round2(totalCost + s.costOfGoods);
+    });
+    var input = state.dailyDoc || {cashBefore:0,bankBefore:0,posProfit:0,debtsExpenses:0,closeOfDayCash:0};
+    var cashBefore = round2(input.cashBefore);
+    var bankBefore = round2(input.bankBefore);
+    var posProfit = round2(input.posProfit);
+    var expenses = round2(input.debtsExpenses);
+    var closeOfDay = round2(input.closeOfDayCash);
+    var totalCashBank = round2(cashBefore + bankBefore + totalIncome + posProfit - expenses);
+    var profitLoss = round2(totalIncome - totalCost);
+    return {byCategory:byCategory, totalIncome:totalIncome, totalCost:totalCost, profitLoss:profitLoss,
+      cashBefore:cashBefore, bankBefore:bankBefore, posProfit:posProfit, expenses:expenses, closeOfDay:closeOfDay,
+      totalCashBank:totalCashBank};
+  }
+  function lowStockCount(){
+    return inventoryRows().filter(function(r){ return r.remaining <= 5 && r.remaining >= 0; }).length;
+  }
+
+  /* ---------------- rendering ---------------- */
+  function renderApp(){
+    renderHeader();
+    renderTabs();
+    var app = document.getElementById('app');
+    if(!state.loadedProducts || !state.loadedPurchases || !state.loadedSales){
+      app.innerHTML = '<div class="empty-state">Loading ledger\u2026</div>';
+      return;
+    }
+    if(state.tab==='dashboard') app.innerHTML = renderDashboard();
+    else if(state.tab==='purchases') app.innerHTML = renderPurchases();
+    else if(state.tab==='sales') app.innerHTML = renderSales();
+    else if(state.tab==='inventory') app.innerHTML = renderInventory();
+    else if(state.tab==='products') app.innerHTML = renderProducts();
+    else if(state.tab==='access') app.innerHTML = state.isOwner ? renderAccess() : '<div class="banner">Only the ledger owner can manage access.</div>';
+    afterRender();
+  }
+
+  function renderHeader(){
+    document.getElementById('todayLabel').textContent = fmtDate(todayISO());
+    var strip = document.getElementById('heroStrip');
+    var who = document.getElementById('whoRow');
+    if(state.authUser){
+      who.innerHTML = 'Signed in as '+esc(state.authUser.email)+' <button id="signOutBtn" type="button">Sign out</button>';
+    } else {
+      who.innerHTML = '';
+    }
+    if(!state.loadedSales || !state.loadedProducts){ strip.innerHTML=''; return; }
+    var todayC = dailyComputed(todayISO());
+    var low = lowStockCount();
+    var accessLabel = state.canEditProcurement===null ? 'Checking\u2026' : (state.canEditProcurement ? (state.isOwner?'Owner \u2014 full access':'Editor \u2014 can record purchases') : 'View only \u2014 no procurement access');
+    strip.innerHTML =
+      '<div class="hero-cell"><div class="label">Today\u2019s sales income</div><div class="value num">'+money(todayC.totalIncome)+'</div></div>'+
+      '<div class="hero-cell"><div class="label">Today\u2019s profit on goods</div><div class="value num '+(todayC.profitLoss>=0?'good':'warn')+'">'+money(todayC.profitLoss)+'</div></div>'+
+      '<div class="hero-cell"><div class="label">Low stock (\u22645 left)</div><div class="value num '+(low>0?'warn':'')+'">'+low+'</div></div>'+
+      '<div class="hero-cell"><div class="label">Your access</div><div class="value" style="font-size:15px;">'+esc(accessLabel)+'</div></div>';
+  }
+
+  function renderTabs(){
+    var nav = document.getElementById('tabs');
+    nav.innerHTML = TABS.filter(function(t){ return !t.ownerOnly || state.isOwner; }).map(function(t){
+      return '<button data-tab="'+t.id+'" class="'+(state.tab===t.id?'active':'')+'">'+t.label+'</button>';
+    }).join('');
+  }
+
+  function renderAccess(){
+    var rows = Array.from(state.roles.entries()).sort(function(a,b){ return (a[1].email||'').localeCompare(b[1].email||''); });
+    var rowsHtml = rows.map(function(entry){
+      var uid = entry[0], r = entry[1];
+      var isMe = state.authUser && state.authUser.uid===uid;
+      var isTheOwner = state.ownerUid===uid;
+      return '<tr>'+
+        '<td>'+esc(r.email||uid)+(isMe?' <span class="hint">(you)</span>':'')+(isTheOwner?' <span class="tag tag-fish">Owner</span>':'')+'</td>'+
+        '<td class="num">'+(r.editor?'Can edit':'View only')+'</td>'+
+        '<td><div class="row-actions">'+
+          (isTheOwner ? '' : '<button class="btn secondary small" data-toggle-role="'+uid+'" data-next="'+(r.editor?'0':'1')+'">'+(r.editor?'Revoke edit access':'Grant edit access')+'</button>')+
+        '</div></td>'+
+      '</tr>';
+    }).join('');
+    return ''+
+    '<section class="panel">'+
+      '<h2>Manage access</h2>'+
+      '<div class="sub">Only the owner (you) can see this tab. Grant edit access to let someone record purchases (procurement); everyone else can still view the whole ledger and record sales.</div>'+
+      (rows.length ? (
+        '<div class="table-scroll"><table class="ledger">'+
+        '<thead><tr><th>Person</th><th class="num">Procurement access</th><th></th></tr></thead>'+
+        '<tbody>'+rowsHtml+'</tbody></table></div>'
+      ) : '<div class="empty-state">No one has signed in yet.</div>')+
+    '</section>';
+  }
+
+  function productOptionsGrouped(selectedId, opts){
+    opts = opts||{};
+    var byCat = {};
+    sortedProducts().forEach(function(p){
+      byCat[p.category] = byCat[p.category]||[];
+      byCat[p.category].push(p);
+    });
+    var html = '';
+    if(opts.placeholder) html += '<option value="">'+esc(opts.placeholder)+'</option>';
+    Object.keys(byCat).sort().forEach(function(cat){
+      html += '<optgroup label="'+esc(cat)+'">';
+      byCat[cat].forEach(function(p){
+        var label = p.variant;
+        if(opts.showStock){
+          var remaining = opts.stockMap ? (opts.stockMap[p.id]||0) : 0;
+          label += ' \u2014 ' + remaining + ' left';
+        }
+        html += '<option value="'+p.id+'" '+(p.id===selectedId?'selected':'')+'>'+esc(label)+'</option>';
+      });
+      html += '</optgroup>';
+    });
+    if(opts.allowNew) html += '<option value="__new__" '+('__new__'===selectedId?'selected':'')+'>+ Add a new product\u2026</option>';
+    return html;
+  }
+
+  function renderDashboard(){
+    var d = state.date;
+    var c = dailyComputed(d);
+    var cats = Object.keys(c.byCategory).sort();
+    var catLines = cats.length ? cats.map(function(cat){
+      return '<div class="calc-line"><span>Total '+esc(cat)+' sold</span><span class="amt">'+money(c.byCategory[cat])+'</span></div>';
+    }).join('') : '<div class="calc-line"><span>No sales recorded for this date yet</span><span class="amt">'+money(0)+'</span></div>';
+
+    var closeNote, balanceLabel, balanceVal, balanceClass;
+    if(c.closeOfDay > 0){
+      var variance = round2(c.closeOfDay - c.totalCashBank);
+      balanceLabel = 'Variance (counted vs. book)';
+      balanceVal = variance;
+      balanceClass = variance===0 ? '' : (variance<0 ? 'loss' : 'profit');
+      closeNote = '<div class="hint">Counted cash/bank at close: '+money(c.closeOfDay)+'</div>';
+    } else {
+      balanceLabel = 'Balance (book total, not yet counted)';
+      balanceVal = c.totalCashBank;
+      balanceClass = '';
+      closeNote = '<div class="hint">Enter the actual cash/bank counted at close of day to see variance.</div>';
+    }
+
+    return ''+
+    '<section class="panel">'+
+      '<div class="toolbar">'+
+        '<div><h2>Daily summary</h2><div class="sub">Cash, bank and sales position for one trading day.</div></div>'+
+        '<div class="field"><label for="dashDate">Date</label><input type="date" id="dashDate" value="'+d+'"></div>'+
+      '</div>'+
+      '<div class="grid-2">'+
+        '<div>'+
+          '<h3 style="font-size:15px;margin-bottom:10px;">Opening position &amp; adjustments</h3>'+
+          '<form id="dailyForm">'+
+            '<div class="input-line"><label for="cashBefore">Cash before sales</label><input type="number" step="0.01" id="cashBefore" value="'+c.cashBefore+'"></div>'+
+            '<div class="input-line"><label for="bankBefore">Money in bank before sales</label><input type="number" step="0.01" id="bankBefore" value="'+c.bankBefore+'"></div>'+
+            '<div class="input-line"><label for="posProfit">Total POS profit</label><input type="number" step="0.01" id="posProfit" value="'+c.posProfit+'"></div>'+
+            '<div class="input-line"><label for="debtsExpenses">Debts / expenses</label><input type="number" step="0.01" id="debtsExpenses" value="'+c.expenses+'"></div>'+
+            '<div class="input-line"><label for="closeOfDayCash">Cash/bank counted at close</label><input type="number" step="0.01" id="closeOfDayCash" value="'+c.closeOfDay+'"></div>'+
+            '<div style="margin-top:14px;"><button type="submit" class="btn">Save day\u2019s inputs</button></div>'+
+          '</form>'+
+        '</div>'+
+        '<div>'+
+          '<h3 style="font-size:15px;margin-bottom:10px;">Computed from sales this day</h3>'+
+          catLines+
+          '<div class="calc-line"><span>Total income (sales)</span><span class="amt">'+money(c.totalIncome)+'</span></div>'+
+          '<div class="calc-line"><span>Cost of goods sold</span><span class="amt">'+money(c.totalCost)+'</span></div>'+
+          '<div class="calc-line"><span>Profit / loss on goods</span><span class="amt '+(c.profitLoss>=0?'profit':'loss')+'">'+money(c.profitLoss)+'</span></div>'+
+          '<div class="calc-line total"><span>Total cash/bank</span><span class="amt">'+money(c.totalCashBank)+'</span></div>'+
+          '<div class="calc-line"><span>'+balanceLabel+'</span><span class="amt '+balanceClass+'">'+money(balanceVal)+'</span></div>'+
+          closeNote+
+        '</div>'+
+      '</div>'+
+    '</section>';
+  }
+
+  function renderPurchases(){
+    var canEdit = !!state.canEditProcurement;
+    var stockMap = {};
+    inventoryRows().forEach(function(r){ stockMap[r.product.id] = r.remaining; });
+    var newFields = state.newProductMode.purchases ? (
+      '<div class="field"><label for="pNewCategory">Category</label><input type="text" id="pNewCategory" placeholder="e.g. Fish" list="categoryList"></div>'+
+      '<div class="field"><label for="pNewVariant">Variant</label><input type="text" id="pNewVariant" placeholder="e.g. 900"></div>'
+    ) : '';
+
+    var rowsHtml = state.purchases.length ? state.purchases.map(function(p){
+      return '<tr>'+
+        '<td class="num">'+fmtDate(p.date)+'</td>'+
+        '<td><span class="tag '+categoryClass(p.category)+'">'+esc(p.category)+'</span></td>'+
+        '<td>'+esc(p.variant)+'</td>'+
+        '<td class="num">'+p.quantity+'</td>'+
+        '<td class="num">'+money(p.costPrice)+'</td>'+
+        '<td class="num">'+money(p.sellingPrice)+'</td>'+
+        '<td class="num">'+money(p.quantity*p.costPrice)+'</td>'+
+        '<td><div class="row-actions">'+(canEdit ? '<button class="btn danger" data-del-purchase="'+p.id+'">Delete</button>' : '')+'</div></td>'+
+      '</tr>';
+    }).join('') : '';
+
+    var totalCost = round2(state.purchases.reduce(function(a,p){ return a + round2(p.quantity*p.costPrice); }, 0));
+
+    var accessBanner = canEdit ? '' : (
+      '<div class="banner">'+
+        (state.canEditProcurement===null ? 'Checking your access\u2026' :
+        'Recording purchases (procurement) needs edit access. Ask the ledger\u2019s owner to change your role to \u201cCan edit\u201d from the share menu \u2014 you can still view the log below.')+
+      '</div>'
+    );
+
+    var formHtml = canEdit ? (
+      '<datalist id="categoryList">'+categoriesPresent().map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>'+
+      '<form class="record-form" id="purchaseForm">'+
+        '<div class="field grow"><label for="pProduct">Product</label><select id="pProduct">'+productOptionsGrouped(null,{allowNew:true})+'</select></div>'+
+        newFields+
+        '<div class="field narrow"><label for="pDate">Date</label><input type="date" id="pDate" value="'+state.date+'"></div>'+
+        '<div class="field narrow"><label for="pQty">Quantity</label><input type="number" min="0" step="1" id="pQty" value="1"></div>'+
+        '<div class="field narrow"><label for="pCost">Cost price (unit)</label><input type="number" min="0" step="0.01" id="pCost" value="0"></div>'+
+        '<div class="field narrow"><label for="pSell">Selling price (unit)</label><input type="number" min="0" step="0.01" id="pSell" value="0"></div>'+
+        '<div class="field"><button type="submit" class="btn">Record purchase</button></div>'+
+      '</form>'
+    ) : '';
+
+    return ''+
+    '<section class="panel">'+
+      '<h2>Record a purchase</h2>'+
+      '<div class="sub">Stock bought in sets (or refreshes) that product\u2019s current cost and selling price. Only people with edit access can add, change or delete purchases.</div>'+
+      accessBanner+
+      formHtml+
+      '<div class="toolbar"><h3 style="font-size:15px;">All purchases</h3>'+
+        (state.downloadsAvailable ? '<button class="btn secondary small" id="exportPurchases">Export CSV</button>' : '')+
+      '</div>'+
+      (state.purchases.length ? (
+        '<div class="table-scroll"><table class="ledger">'+
+        '<thead><tr><th>Date</th><th>Category</th><th>Variant</th><th class="num">Qty</th><th class="num">Cost/unit</th><th class="num">Sell/unit</th><th class="num">Total cost</th><th></th></tr></thead>'+
+        '<tbody>'+rowsHtml+'</tbody>'+
+        '<tfoot><tr><td colspan="6">Total spent on stock</td><td class="num">'+money(totalCost)+'</td><td></td></tr></tfoot>'+
+        '</table></div>'
+      ) : '<div class="empty-state">No purchases recorded yet.'+(canEdit ? ' <strong>Log your first stock delivery above</strong> to start building inventory.' : '')+'</div>')+
+    '</section>';
+  }
+
+  function renderSales(){
+    var stockMap = {};
+    inventoryRows().forEach(function(r){ stockMap[r.product.id] = r.remaining; });
+
+    var rowsHtml = state.sales.length ? state.sales.map(function(s){
+      var profit = s.amount - s.costOfGoods;
+      return '<tr>'+
+        '<td class="num">'+fmtDate(s.date)+'</td>'+
+        '<td><span class="tag '+categoryClass(s.category)+'">'+esc(s.category)+'</span></td>'+
+        '<td>'+esc(s.variant)+'</td>'+
+        '<td class="num">'+s.quantitySold+'</td>'+
+        '<td class="num">'+money(s.unitPrice)+'</td>'+
+        '<td class="num">'+money(s.amount)+'</td>'+
+        '<td class="num">'+money(s.costOfGoods)+'</td>'+
+        '<td class="num '+(profit>=0?'profit':'loss')+'">'+money(profit)+'</td>'+
+        '<td><div class="row-actions"><button class="btn danger" data-del-sale="'+s.id+'">Delete</button></div></td>'+
+      '</tr>';
+    }).join('') : '';
+
+    var totals = state.sales.reduce(function(a,s){ a.amount=round2(a.amount+s.amount); a.cost=round2(a.cost+s.costOfGoods); return a; }, {amount:0,cost:0});
+
+    var hasProducts = state.products.size>0;
+
+    return ''+
+    '<section class="panel">'+
+      '<h2>Record a sale</h2>'+
+      '<div class="sub">Unit price fills in from the product\u2019s current selling price \u2014 adjust it if you sold at a different price.</div>'+
+      (hasProducts ? (
+      '<form class="record-form" id="saleForm">'+
+        '<div class="field grow"><label for="sProduct">Product</label><select id="sProduct">'+productOptionsGrouped(null,{placeholder:'Select a product', showStock:true, stockMap:stockMap})+'</select></div>'+
+        '<div class="field narrow"><label for="sDate">Date</label><input type="date" id="sDate" value="'+state.date+'"></div>'+
+        '<div class="field narrow"><label for="sQty">Quantity sold</label><input type="number" min="0" step="1" id="sQty" value="1"></div>'+
+        '<div class="field narrow"><label for="sPrice">Unit price</label><input type="number" min="0" step="0.01" id="sPrice" value="0"></div>'+
+        '<div class="field"><button type="submit" class="btn">Record sale</button></div>'+
+      '</form>'+
+      '<div class="hint" id="salePreview">Amount and cost of goods will appear here once you pick a product.</div>'
+      ) : '<div class="banner">Add at least one product in the <strong>Products</strong> tab before recording sales.</div>')+
+      '<div class="toolbar" style="margin-top:18px;"><h3 style="font-size:15px;">All sales</h3>'+
+        (state.downloadsAvailable ? '<button class="btn secondary small" id="exportSales">Export CSV</button>' : '')+
+      '</div>'+
+      (state.sales.length ? (
+        '<div class="table-scroll"><table class="ledger">'+
+        '<thead><tr><th>Date</th><th>Category</th><th>Variant</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th><th class="num">Cost of goods</th><th class="num">Profit</th><th></th></tr></thead>'+
+        '<tbody>'+rowsHtml+'</tbody>'+
+        '<tfoot><tr><td colspan="5">Totals</td><td class="num">'+money(totals.amount)+'</td><td class="num">'+money(totals.cost)+'</td><td class="num">'+money(totals.amount-totals.cost)+'</td><td></td></tr></tfoot>'+
+        '</table></div>'
+      ) : '<div class="empty-state">No sales recorded yet. <strong>Log today\u2019s first sale above</strong> once you have stock in.</div>')+
+    '</section>';
+  }
+
+  function renderInventory(){
+    var rows = inventoryRows();
+    var rowsHtml = rows.map(function(r){
+      var low = r.remaining <= 5;
+      return '<tr>'+
+        '<td><span class="tag '+categoryClass(r.product.category)+'">'+esc(r.product.category)+'</span></td>'+
+        '<td>'+esc(r.product.variant)+'</td>'+
+        '<td class="num">'+r.bought+'</td>'+
+        '<td class="num">'+r.sold+'</td>'+
+        '<td class="num '+(low?'low-stock':'')+'">'+r.remaining+(low?' \u26a0':'')+'</td>'+
+      '</tr>';
+    }).join('');
+    var totals = rows.reduce(function(a,r){ a.bought+=r.bought; a.sold+=r.sold; a.remaining+=r.remaining; return a; }, {bought:0,sold:0,remaining:0});
+
+    return ''+
+    '<section class="panel">'+
+      '<div class="toolbar">'+
+        '<div><h2>Inventory</h2><div class="sub">Bought and sold totals across every purchase and sale on record, with what\u2019s left.</div></div>'+
+        (state.downloadsAvailable ? '<button class="btn secondary small" id="exportInventory">Export CSV</button>' : '')+
+      '</div>'+
+      (rows.length ? (
+        '<div class="table-scroll"><table class="ledger">'+
+        '<thead><tr><th>Category</th><th>Variant</th><th class="num">Total bought</th><th class="num">Total sold</th><th class="num">Remaining</th></tr></thead>'+
+        '<tbody>'+rowsHtml+'</tbody>'+
+        '<tfoot><tr><td colspan="2">Totals</td><td class="num">'+totals.bought+'</td><td class="num">'+totals.sold+'</td><td class="num">'+totals.remaining+'</td></tr></tfoot>'+
+        '</table></div>'
+      ) : '<div class="empty-state">No products yet. <strong>Add one in the Products tab</strong> to start tracking stock.</div>')+
+    '</section>';
+  }
+
+  function renderProducts(){
+    var byCat = {};
+    sortedProducts().forEach(function(p){ byCat[p.category]=byCat[p.category]||[]; byCat[p.category].push(p); });
+    var usedIds = {};
+    state.purchases.forEach(function(p){ usedIds[p.productId]=true; });
+    state.sales.forEach(function(s){ usedIds[s.productId]=true; });
+
+    var groupsHtml = Object.keys(byCat).sort().map(function(cat){
+      var rows = byCat[cat].map(function(p){
+        var canDelete = !usedIds[p.id];
+        return '<tr data-product-row="'+p.id+'">'+
+          '<td>'+esc(p.variant)+'</td>'+
+          '<td class="num"><input type="number" min="0" step="0.01" class="prod-cost" value="'+p.costPrice+'" style="width:90px;text-align:right;padding:5px 6px;border:1px solid var(--line-strong);border-radius:2px;background:var(--paper);color:var(--ink);"></td>'+
+          '<td class="num"><input type="number" min="0" step="0.01" class="prod-sell" value="'+p.sellingPrice+'" style="width:90px;text-align:right;padding:5px 6px;border:1px solid var(--line-strong);border-radius:2px;background:var(--paper);color:var(--ink);"></td>'+
+          '<td><div class="row-actions">'+
+            '<button class="btn secondary small" data-save-product="'+p.id+'">Save</button>'+
+            '<button class="btn danger" data-del-product="'+p.id+'" '+(canDelete?'':'disabled title="Has purchase or sale history"')+'>Delete</button>'+
+          '</div></td>'+
+        '</tr>';
+      }).join('');
+      return '<h3 style="font-size:15px;margin:18px 0 8px;">'+
+        '<span class="tag '+categoryClass(cat)+'">'+esc(cat)+'</span></h3>'+
+        '<div class="table-scroll"><table class="ledger">'+
+        '<thead><tr><th>Variant</th><th class="num">Cost price</th><th class="num">Selling price</th><th></th></tr></thead>'+
+        '<tbody>'+rows+'</tbody></table></div>';
+    }).join('');
+
+    return ''+
+    '<section class="panel">'+
+      '<h2>Product catalog</h2>'+
+      '<div class="sub">Cost and selling prices here are the current ones \u2014 they fill in automatically when you record a purchase or sale, and update whenever a new purchase comes in.</div>'+
+      (state.products.size ? groupsHtml : '<div class="empty-state">No products yet. Add your first one below.</div>')+
+      '<h3 style="font-size:15px;margin:22px 0 10px;border-top:1px dashed var(--line-strong);padding-top:18px;">Add a product</h3>'+
+      '<datalist id="categoryList2">'+categoriesPresent().map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>'+
+      '<form class="record-form" id="newProductForm">'+
+        '<div class="field"><label for="npCategory">Category</label><input type="text" id="npCategory" list="categoryList2" placeholder="e.g. Fish"></div>'+
+        '<div class="field"><label for="npVariant">Variant</label><input type="text" id="npVariant" placeholder="e.g. 900"></div>'+
+        '<div class="field narrow"><label for="npCost">Cost price</label><input type="number" min="0" step="0.01" id="npCost" value="0"></div>'+
+        '<div class="field narrow"><label for="npSell">Selling price</label><input type="number" min="0" step="0.01" id="npSell" value="0"></div>'+
+        '<div class="field"><button type="submit" class="btn">Add product</button></div>'+
+      '</form>'+
+    '</section>';
+  }
+
+  /* ---------------- CSV export ---------------- */
+  function toCsv(headers, rows){
+    var esc2 = function(v){
+      v = v==null ? '' : String(v);
+      if(/[",\n]/.test(v)) v = '"'+v.replace(/"/g,'""')+'"';
+      return v;
+    };
+    var lines = [headers.map(esc2).join(',')];
+    rows.forEach(function(r){ lines.push(r.map(esc2).join(',')); });
+    return lines.join('\r\n');
+  }
+  function exportCsv(filename, headers, rows){
+    var csv = toCsv(headers, rows);
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  /* ---------------- event handling ---------------- */
+  function afterRender(){
+    // Purchases: product select changes -> prefill cost/sell, toggle new-product fields
+    var pProduct = document.getElementById('pProduct');
+    if(pProduct){
+      pProduct.addEventListener('change', function(){
+        if(pProduct.value==='__new__'){
+          state.newProductMode.purchases = true;
+          renderApp();
+          return;
+        }
+        state.newProductMode.purchases = false;
+        var prod = state.products.get(pProduct.value);
+        if(prod){
+          var costEl = document.getElementById('pCost'), sellEl = document.getElementById('pSell');
+          if(costEl) costEl.value = prod.costPrice;
+          if(sellEl) sellEl.value = prod.sellingPrice;
+        }
+      });
+    }
+
+    // Sales: product select changes -> prefill unit price, live preview
+    var sProduct = document.getElementById('sProduct');
+    var sQty = document.getElementById('sQty');
+    var sPrice = document.getElementById('sPrice');
+    function updateSalePreview(){
+      var preview = document.getElementById('salePreview');
+      if(!preview || !sProduct) return;
+      var prod = state.products.get(sProduct.value);
+      if(!prod){ preview.textContent = 'Amount and cost of goods will appear here once you pick a product.'; return; }
+      var qty = Number(sQty.value)||0;
+      var price = Number(sPrice.value)||0;
+      var amount = qty*price;
+      var cost = qty*prod.costPrice;
+      preview.innerHTML = 'Amount: <strong>'+money(amount)+'</strong> \u00b7 Cost of goods: <strong>'+money(cost)+'</strong> \u00b7 Profit: <strong>'+money(amount-cost)+'</strong>';
+    }
+    if(sProduct){
+      sProduct.addEventListener('change', function(){
+        var prod = state.products.get(sProduct.value);
+        if(prod && sPrice) sPrice.value = prod.sellingPrice;
+        updateSalePreview();
+      });
+    }
+    if(sQty) sQty.addEventListener('input', updateSalePreview);
+    if(sPrice) sPrice.addEventListener('input', updateSalePreview);
+
+    // Dashboard date
+    var dashDate = document.getElementById('dashDate');
+    if(dashDate){
+      dashDate.addEventListener('change', function(){
+        state.date = dashDate.value || todayISO();
+        subscribeDaily(state.date);
+        renderApp();
+      });
+    }
+
+    // Forms
+    var purchaseForm = document.getElementById('purchaseForm');
+    if(purchaseForm) purchaseForm.addEventListener('submit', onSubmitPurchase);
+    var saleForm = document.getElementById('saleForm');
+    if(saleForm) saleForm.addEventListener('submit', onSubmitSale);
+    var dailyForm = document.getElementById('dailyForm');
+    if(dailyForm) dailyForm.addEventListener('submit', onSubmitDaily);
+    var newProductForm = document.getElementById('newProductForm');
+    if(newProductForm) newProductForm.addEventListener('submit', onSubmitNewProduct);
+
+    // Export buttons
+    var expP = document.getElementById('exportPurchases');
+    if(expP) expP.addEventListener('click', function(){
+      exportCsv('purchases.csv', ['Date','Category','Variant','Quantity','Cost price','Selling price','Total cost'],
+        state.purchases.map(function(p){ return [p.date,p.category,p.variant,p.quantity,p.costPrice,p.sellingPrice,round2(p.quantity*p.costPrice)]; }));
+    });
+    var expS = document.getElementById('exportSales');
+    if(expS) expS.addEventListener('click', function(){
+      exportCsv('sales.csv', ['Date','Category','Variant','Quantity sold','Unit price','Amount','Cost of goods','Profit'],
+        state.sales.map(function(s){ return [s.date,s.category,s.variant,s.quantitySold,s.unitPrice,s.amount,s.costOfGoods,round2(s.amount-s.costOfGoods)]; }));
+    });
+    var expI = document.getElementById('exportInventory');
+    if(expI) expI.addEventListener('click', function(){
+      exportCsv('inventory.csv', ['Category','Variant','Total bought','Total sold','Remaining'],
+        inventoryRows().map(function(r){ return [r.product.category,r.product.variant,r.bought,r.sold,r.remaining]; }));
+    });
+
+    // Delete buttons: two-tap confirm (native confirm()/alert() dialogs don't fire reliably
+    // inside this sandboxed view, which is why "Delete" previously looked like it did nothing)
+    document.querySelectorAll('[data-del-purchase]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        if(!state.canEditProcurement){ showToast('You need edit access to delete purchases.', true); return; }
+        armDelete(btn, function(){
+          db.doc('purchases/'+btn.getAttribute('data-del-purchase')).delete().then(function(){
+            showToast('Purchase deleted.');
+          }).catch(function(){
+            showToast('That didn\u2019t delete \u2014 you may not have edit access to procurement.', true);
+          });
+        });
+      });
+    });
+    document.querySelectorAll('[data-del-sale]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        armDelete(btn, function(){
+          db.doc('sales/'+btn.getAttribute('data-del-sale')).delete().then(function(){
+            showToast('Sale deleted.');
+          }).catch(function(){
+            showToast('That didn\u2019t delete \u2014 please try again.', true);
+          });
+        });
+      });
+    });
+    document.querySelectorAll('[data-del-product]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        if(btn.disabled) return;
+        armDelete(btn, function(){
+          db.doc('products/'+btn.getAttribute('data-del-product')).delete().then(function(){
+            showToast('Product removed.');
+          }).catch(function(){
+            showToast('That didn\u2019t delete \u2014 please try again.', true);
+          });
+        });
+      });
+    });
+    document.querySelectorAll('[data-save-product]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = btn.getAttribute('data-save-product');
+        var row = document.querySelector('[data-product-row="'+id+'"]');
+        if(!row) return;
+        var cost = round2(row.querySelector('.prod-cost').value);
+        var sell = round2(row.querySelector('.prod-sell').value);
+        db.doc('products/'+id).update({costPrice:cost, sellingPrice:sell}).catch(function(){});
+      });
+    });
+
+    // Tabs
+    document.querySelectorAll('#tabs button').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        state.tab = btn.getAttribute('data-tab');
+        renderApp();
+      });
+    });
+
+    // Sign out
+    var signOutBtn = document.getElementById('signOutBtn');
+    if(signOutBtn) signOutBtn.addEventListener('click', function(){
+      auth.signOut().catch(function(){});
+    });
+
+    // Access tab: grant/revoke edit access
+    document.querySelectorAll('[data-toggle-role]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var uid = btn.getAttribute('data-toggle-role');
+        var next = btn.getAttribute('data-next') === '1';
+        db.doc('roles/'+uid).update({editor: next}).then(function(){
+          showToast(next ? 'Edit access granted.' : 'Edit access revoked.');
+        }).catch(function(){
+          showToast('That didn\u2019t save \u2014 please try again.', true);
+        });
+      });
+    });
+
+    if(sProduct) updateSalePreview();
+  }
+
+  function onSubmitPurchase(e){
+    e.preventDefault();
+    if(!state.canEditProcurement){ showToast('You need edit access to record purchases.', true); return; }
+    var productSel = document.getElementById('pProduct').value;
+    var date = document.getElementById('pDate').value || todayISO();
+    var qty = Number(document.getElementById('pQty').value)||0;
+    var cost = round2(document.getElementById('pCost').value);
+    var sell = round2(document.getElementById('pSell').value);
+
+    function recordPurchase(productId, category, variant){
+      db.collection('purchases').add({date:date, productId:productId, category:category, variant:variant,
+        quantity:qty, costPrice:cost, sellingPrice:sell, createdAt:new Date().toISOString()}).catch(function(){});
+      db.doc('products/'+productId).update({costPrice:cost, sellingPrice:sell}).catch(function(){});
+    }
+
+    if(productSel==='__new__'){
+      var category = (document.getElementById('pNewCategory').value||'').trim();
+      var variant = (document.getElementById('pNewVariant').value||'').trim();
+      if(!category || !variant){ showToast('Enter both a category and a variant for the new product.', true); return; }
+      var id = slugify(category+'-'+variant);
+      if(!id){ showToast('That category/variant name isn\u2019t usable \u2014 try letters or numbers.', true); return; }
+      if(state.products.has(id)){
+        recordPurchase(id, state.products.get(id).category, state.products.get(id).variant);
+      } else {
+        db.doc('products/'+id).set({category:category, variant:variant, costPrice:cost, sellingPrice:sell, createdAt:new Date().toISOString()})
+          .then(function(){ recordPurchase(id, category, variant); })
+          .catch(function(){});
+      }
+      state.newProductMode.purchases = false;
+    } else if(productSel){
+      var prod = state.products.get(productSel);
+      if(!prod) return;
+      recordPurchase(productSel, prod.category, prod.variant);
+    } else {
+      showToast('Choose a product first.', true);
+      return;
+    }
+  }
+
+  function onSubmitSale(e){
+    e.preventDefault();
+    var productId = document.getElementById('sProduct').value;
+    if(!productId){ showToast('Choose a product first.', true); return; }
+    var prod = state.products.get(productId);
+    if(!prod) return;
+    var date = document.getElementById('sDate').value || todayISO();
+    var qty = Number(document.getElementById('sQty').value)||0;
+    var price = round2(document.getElementById('sPrice').value);
+    var amount = round2(qty*price);
+    var costOfGoods = round2(qty*prod.costPrice);
+
+    var remaining = 0;
+    inventoryRows().forEach(function(r){ if(r.product.id===productId) remaining = r.remaining; });
+    if(qty > remaining){
+      showToast('Recorded \u2014 note only '+remaining+' were left in stock for '+prod.variant+'.', true);
+    }
+
+    db.collection('sales').add({date:date, productId:productId, category:prod.category, variant:prod.variant,
+      quantitySold:qty, unitPrice:price, amount:amount, costOfGoods:costOfGoods, createdAt:new Date().toISOString()}).catch(function(){
+        showToast('That sale didn\u2019t save \u2014 please try again.', true);
+      });
+  }
+
+
+  function onSubmitDaily(e){
+    e.preventDefault();
+    var date = state.date;
+    db.doc('daily/'+date).set({
+      cashBefore: round2(document.getElementById('cashBefore').value),
+      bankBefore: round2(document.getElementById('bankBefore').value),
+      posProfit: round2(document.getElementById('posProfit').value),
+      debtsExpenses: round2(document.getElementById('debtsExpenses').value),
+      closeOfDayCash: round2(document.getElementById('closeOfDayCash').value)
+    }).catch(function(){});
+  }
+
+  function onSubmitNewProduct(e){
+    e.preventDefault();
+    var category = (document.getElementById('npCategory').value||'').trim();
+    var variant = (document.getElementById('npVariant').value||'').trim();
+    var cost = round2(document.getElementById('npCost').value);
+    var sell = round2(document.getElementById('npSell').value);
+    if(!category || !variant){ showToast('Enter both a category and a variant.', true); return; }
+    var id = slugify(category+'-'+variant);
+    if(!id){ showToast('That category/variant name isn\u2019t usable \u2014 try letters or numbers.', true); return; }
+    if(state.products.has(id)){ showToast('That product already exists in the catalog.', true); return; }
+    db.doc('products/'+id).set({category:category, variant:variant, costPrice:cost, sellingPrice:sell, createdAt:new Date().toISOString()}).catch(function(){});
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
